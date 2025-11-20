@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Audiora</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Tone.js for Sound Therapy -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+
+  <!-- Inter font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- PWA manifest + theme -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#06b6d4">
+
+  <script>
+    // Register service worker for PWA
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js").catch(console.error);
+      });
+    }
+  </script>
+
+  <style>
+    :root{
+      --bg:#071028;
+      --panel:#0f1724;
+      --muted:#9aa4b2;
+      --accent:#16a085;
+      --accent2:#4f46e5;
+    }
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(79,70,229,0.06), transparent),
+                  linear-gradient(180deg,var(--bg), #041126 140%);
+      color:#e6eef6;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .app {
+      max-width:1100px;
+      margin:28px auto;
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.03);
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:0 20px 50px rgba(2,6,23,0.7);
+    }
+
+    .topbar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:18px 22px;
+      border-bottom:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(90deg, rgba(255,255,255,0.01), transparent);
+    }
+    .logo {
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo .icon { width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+      background: radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent),
+                  linear-gradient(90deg,#111827,#020617);
+      font-weight:700; color:white; font-size:18px; box-shadow:0 8px 24px rgba(15,23,42,0.8);
+    }
+    .top-sub { color:#9fb4d1; font-size:13px }
+
+    .views { padding:28px; }
+    .view { display:none; opacity:0; transform: translateY(8px); transition: all 240ms ease; }
+    .view.active { display:block; opacity:1; transform: translateY(0); }
+
+    .splash {
+      min-height:420px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      gap:18px;
+      position:relative;
+    }
+    .splash .bg-pulse {
+      position:absolute; inset:0;
+      background: radial-gradient(circle at 50% 45%, rgba(79,70,229,0.08), transparent 20%),
+                  radial-gradient(circle at 20% 80%, rgba(22,160,133,0.05), transparent 20%);
+      animation: slow-pulse 4.5s infinite ease-in-out;
+      z-index:0;
+    }
+    @keyframes slow-pulse {
+      0%{ transform:scale(1); opacity:0.9 }
+      50%{ transform:scale(1.03); opacity:1 }
+      100%{ transform:scale(1); opacity:0.9 }
+    }
+    .splash .card {
+      z-index:1;
+      width:100%; max-width:720px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border-radius:16px; padding:36px; text-align:center; border:1px solid rgba(255,255,255,0.05);
+      box-shadow: 0 30px 80px rgba(2,6,23,0.8);
+    }
+    .splash .logo-big {
+      width:120px; height:120px; margin:0 auto; border-radius:20px;
+      display:flex; align-items:center; justify-content:center; font-weight:800; font-size:36px;
+      background: radial-gradient(circle at 35% 20%, rgba(255,255,255,0.08), transparent),
+                  radial-gradient(circle at 70% 80%, rgba(0,0,0,0.9), transparent),
+                  linear-gradient(145deg,#020617,#111827);
+      color:white; transform:scale(0.8); opacity:0; animation: logoIn 900ms forwards ease;
+    }
+    @keyframes logoIn {
+      0% { transform:scale(0.7); opacity:0 }
+      100% { transform:scale(1); opacity:1 }
+    }
+    .aura-dot{
+      width:40px;height:40px;border-radius:999px;
+      background: radial-gradient(circle,rgba(248,250,252,0.9),rgba(15,23,42,0.2));
+      box-shadow:0 0 30px rgba(248,250,252,0.9);
+    }
+    .splash h1 { margin:14px 0 6px; font-size:26px }
+    .splash p { color:#9fb4d1; margin:0 0 14px; }
+
+    .btn {
+      padding:10px 16px; border-radius:10px; background:linear-gradient(90deg,#06b6d4,#4f46e5); color:white; font-weight:700; border:none; cursor:pointer;
+      box-shadow:0 8px 24px rgba(79,70,229,0.2);
+    }
+    .muted-btn { background:transparent; color:#c7d6ea; border:1px solid rgba(255,255,255,0.08); padding:8px 12px; border-radius:10px; cursor:pointer; }
+
+    .grid-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; margin-top:12px; }
+    .tile {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(15,23,42,0.2));
+      border-radius:14px; padding:18px; border:1px solid rgba(148,163,184,0.15); cursor:pointer; transition:transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+    }
+    .tile:hover { transform:translateY(-6px); box-shadow: 0 18px 40px rgba(2,6,23,0.9); border-color:#38bdf8; }
+    .tile h3 { margin:0; font-size:18px }
+    .tile p { margin:6px 0 0; color:#9fb4d1; font-size:13px }
+
+    .card-panel { background: radial-gradient(circle at 0 0,rgba(148,163,184,0.14),transparent 60%), linear-gradient(180deg,#020617,#020617); border-radius:12px; padding:18px; border:1px solid rgba(148,163,184,0.4) }
+
+    #wave-container { width:260px; height:260px; margin:20px auto; display:flex; align-items:center; justify-content:center; }
+    #sound-wave { width:140px; height:140px; border-radius:999px; background: radial-gradient(circle,#6ec2f7,#1e88e5); box-shadow:0 20px 60px rgba(30,136,229,0.35); transform:scale(0.6); transition: transform 1s cubic-bezier(.22,.9,.37,1), opacity 0.3s }
+
+    .affirmation { font-size:18px; color:#e5f3ff; min-height:64px; display:flex; align-items:center; justify-content:center; text-align:center; padding:18px; }
+
+    #bubble-area { position:relative; width:100%; height:420px; background: radial-gradient(circle at 0 0,rgba(56,189,248,0.2),transparent 55%), linear-gradient(180deg,#020617,#020617); border-radius:12px; overflow:hidden; border:1px solid rgba(148,163,184,0.3); }
+    .bubble { position:absolute; border-radius:999px; display:flex; align-items:center; justify-content:center; color:#021024; font-weight:700; cursor:pointer; user-select:none; box-shadow: 0 10px 30px rgba(2,6,23,0.9) }
+
+    .summary { background: linear-gradient(90deg,#3949ab,#1e88e5); padding:14px; border-radius:10px; color:white }
+
+    @media (max-width:640px) {
+      .splash { padding:20px }
+      .splash .card { padding:20px }
+      .topbar { padding:12px }
+      .views { padding:18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="logo">
+        <div class="icon">
+          <div class="aura-dot"></div>
+        </div>
+        <div>
+          <div style="font-weight:700">Audiora</div>
+          <div id="top-sub" class="top-sub">Welcome</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div id="user-greet" style="color:#cfe9f9; font-weight:600; display:none">Hi</div>
+        <button id="home-btn" class="muted-btn" style="display:none">Home</button>
+      </div>
+    </div>
+
+    <div class="views">
+
+      <!-- 1. Splash -->
+      <div id="splash-view" class="view active">
+        <div class="splash">
+          <div class="bg-pulse" aria-hidden="true"></div>
+          <div class="card">
+            <div class="logo-big">
+              <div class="aura-dot"></div>
+            </div>
+            <h1>Audiora</h1>
+            <p>Calm your ears. Train your focus. Track your feel.</p>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:14px;flex-wrap:wrap">
+              <button id="continue-btn" class="btn">Continue</button>
+              <button id="explore-btn" class="muted-btn">Quick Tour</button>
+              <button id="install-btn" class="muted-btn" style="display:none">Install App 📲</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Login -->
+      <div id="login-view" class="view">
+        <div class="max-w-2xl mx-auto">
+          <div style="text-align:center;margin-bottom:18px">
+            <h2 style="font-size:22px;font-weight:700">Sign in to Audiora</h2>
+            <div style="color:#9fb4d1;margin-top:6px">Create account once, then we remember you (this browser only).</div>
+          </div>
+          <form id="login-form" class="card-panel max-w-md mx-auto" style="display:grid;gap:12px">
+            <label class="text-slate-300">Name
+              <input id="login-name" type="text" placeholder="Your name" required class="mt-1 w-full px-3 py-2 rounded-md bg-slate-900/70 border border-slate-600/70 text-sm">
+            </label>
+            <label class="text-slate-300">Email
+              <input id="login-email" type="email" placeholder="you@audiora.com" required class="mt-1 w-full px-3 py-2 rounded-md bg-slate-900/70 border border-slate-600/70 text-sm">
+            </label>
+            <label class="text-slate-300">Password
+              <input id="login-pass" type="password" placeholder="password" required class="mt-1 w-full px-3 py-2 rounded-md bg-slate-900/70 border border-slate-600/70 text-sm">
+            </label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:6px">
+              <button type="button" id="create-account" class="muted-btn">Create / Update Account</button>
+              <button type="submit" class="btn">Sign In</button>
+              <button type="button" id="skip-login-2" class="muted-btn">Skip</button>
+            </div>
+            <div style="color:#9fb4d1;font-size:12px;margin-top:4px">
+              Stored in localStorage on this device only (not a secure production auth).
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- 3. Home -->
+      <div id="home-view" class="view">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div>
+              <h2 style="font-size:20px;font-weight:800">Home</h2>
+              <div style="color:#9fb4d1">What do you need right now?</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button id="open-settings" class="muted-btn">Settings</button>
+            </div>
+          </div>
+
+          <div class="grid-tiles">
+            <div class="tile" data-target="breath-view">
+              <h3>🌬️ Breathing Exercises</h3>
+              <p>Guided Sonic Breath (4-7-8) with tones</p>
+            </div>
+            <div class="tile" data-target="positive-view">
+              <h3>✨ Positive Boost</h3>
+              <p>Auto-rotating motivational affirmations</p>
+            </div>
+            <div class="tile" data-target="sound-view">
+              <h3>🎧 Sound Therapy</h3>
+              <p>Masking noises & natural soundscapes</p>
+            </div>
+            <div class="tile" data-target="bubble-view">
+              <h3>🫧 Bubble Pop</h3>
+              <p>Timed pop-all-bubbles mini-game</p>
+            </div>
+            <div class="tile" data-target="log-view">
+              <h3>📊 Feel Meter</h3>
+              <p>Daily mood, tinnitus & smart suggestions</p>
+            </div>
+            <div class="tile" data-target="about-view">
+              <h3>ℹ️ About</h3>
+              <p>App details & privacy notes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Breathing -->
+      <div id="breath-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-lg font-extrabold">🌬️ Breathing Exercises</h2>
+            <p class="text-sm text-slate-400">Follow the sound wave — 4 inhale • 7 hold • 8 exhale</p>
+          </div>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+
+        <div class="card-panel text-center">
+          <div id="wave-container">
+            <div id="sound-wave"></div>
+          </div>
+          <div id="breath-title" class="font-semibold text-slate-100">Tap Start to begin</div>
+          <div class="mt-2 text-slate-400 text-sm">Inhale 4s • Hold 7s • Exhale 8s</div>
+          <div class="mt-4 flex gap-3 justify-center">
+            <button id="breath-start" class="btn">Start</button>
+            <button id="breath-stop" class="muted-btn">Stop</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 5. Positive Boost -->
+      <div id="positive-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-lg font-extrabold">✨ Positive Boost</h2>
+            <p class="text-sm text-slate-400">Automatic affirmations to gently reframe your moment</p>
+          </div>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+
+        <div class="card-panel">
+          <div id="affirmation-box" class="affirmation">Breathe in... breathe out.</div>
+          <div class="flex gap-3 justify-center mt-3">
+            <button id="pause-affirm" class="muted-btn">Pause</button>
+            <button id="next-affirm" class="btn">Next</button>
+          </div>
+          <p class="mt-2 text-xs text-center text-slate-500">Affirmations rotate every 4 seconds</p>
+        </div>
+      </div>
+
+      <!-- 6. Sound Therapy -->
+      <div id="sound-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-lg font-extrabold">🎧 Sound Therapy</h2>
+            <p class="text-sm text-slate-400">Masking noises and ambient landscapes</p>
+          </div>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div class="card-panel mb-4">
+              <div class="flex justify-between items-center mb-2">
+                <div>
+                  <div class="font-semibold">Noise Colors</div>
+                  <div class="text-xs text-slate-400">White, Pink, Brown and more</div>
+                </div>
+                <button id="stop-sound" class="muted-btn">Stop</button>
+              </div>
+
+              <div class="space-y-3 text-sm">
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">White Noise</div>
+                    <div class="text-xs text-slate-400">Static-like</div>
+                  </div>
+                  <button class="sound-play-btn muted-btn" data-sound="white-noise">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">Pink Noise</div>
+                    <div class="text-xs text-slate-400">Rain-like</div>
+                  </div>
+                  <button class="sound-play-btn muted-btn" data-sound="pink-noise">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">Brown Noise</div>
+                    <div class="text-xs text-slate-400">Deep rumble</div>
+                  </div>
+                  <button class="sound-play-btn muted-btn" data-sound="brown-noise">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div>
+                    <div class="font-semibold">Ocean Waves</div>
+                    <div class="text-xs text-slate-400">Slow waves</div>
+                  </div>
+                  <button class="sound-play-btn muted-btn" data-sound="ocean">▶</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-panel">
+              <div class="font-semibold">Ambient Soundscapes</div>
+              <div class="text-xs text-slate-400 mt-1">Forest rain, stream, thunderstorm</div>
+
+              <div class="space-y-3 mt-3 text-sm">
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Forest Rain</div>
+                  <button class="sound-play-btn muted-btn" data-sound="rain">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Thunderstorm</div>
+                  <button class="sound-play-btn muted-btn" data-sound="thunderstorm">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Gentle Stream</div>
+                  <button class="sound-play-btn muted-btn" data-sound="stream">▶</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div>
+            <div class="card-panel mb-4">
+              <div class="font-semibold">Tonal & ASMR</div>
+              <div class="text-xs text-slate-400 mt-1">Singing bowls & whispering</div>
+
+              <div class="space-y-3 mt-3 text-sm">
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Singing Bowl</div>
+                  <button class="sound-play-btn muted-btn" data-sound="singing-bowl">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Whisper</div>
+                  <button class="sound-play-btn muted-btn" data-sound="whisper">▶</button>
+                </div>
+
+                <div class="flex justify-between items-center">
+                  <div class="font-semibold">Stream / Bubbles</div>
+                  <button class="sound-play-btn muted-btn" data-sound="bubbles">▶</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-panel">
+              <div class="font-semibold">Volume</div>
+              <input id="sound-volume" type="range" min="-48" max="0" value="-12" class="w-full mt-3">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. Bubble Pop -->
+      <div id="bubble-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-lg font-extrabold">🫧 Bubble Pop (Timed)</h2>
+            <p class="text-sm text-slate-400">Pop all bubbles before time runs out</p>
+          </div>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+
+        <div class="card-panel">
+          <div class="flex justify-between items-center mb-2 text-sm">
+            <div>
+              <div class="font-semibold text-slate-100">Time</div>
+              <div id="bubble-timer-read" class="text-slate-400 text-sm">00:30</div>
+            </div>
+            <div>
+              <div class="font-semibold text-slate-100">Bubbles</div>
+              <div id="bubble-count" class="text-slate-400 text-sm">0</div>
+            </div>
+            <div>
+              <div class="font-semibold text-slate-100">Score</div>
+              <div id="bubble-score" class="text-slate-400 text-sm">0</div>
+            </div>
+            <div>
+              <button id="start-bubble" class="btn">Start</button>
+            </div>
+          </div>
+
+          <div id="bubble-area"></div>
+        </div>
+      </div>
+
+      <!-- 8. Feel Meter -->
+      <div id="log-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <div>
+            <h2 class="text-lg font-extrabold">📊 Feel Meter</h2>
+            <p class="text-sm text-s
+late-400">Daily log & smart suggestions</p>
+          </div>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+
+        <form id="tinnitus-form" class="card-panel space-y-4">
+          <div>
+            <div class="font-semibold">1. Mood</div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-xs">
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="mood" value="Fantastic" required> 🤩 Fantastic</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="mood" value="Good"> 🙂 Good</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="mood" value="Okay"> 😐 Okay</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="mood" value="A bit off"> 😕 A bit off</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="mood" value="Struggling"> 😩 Struggling</label>
+            </div>
+          </div>
+
+          <div>
+            <div class="font-semibold">2. Tinnitus Loudness (0–10)</div>
+            <input id="tinnitus-loudness" name="tinnitus" type="range" min="0" max="10" value="5" oninput="updateSliderOutput('tinnitus-output',this.value)" class="w-full mt-2">
+            <div class="flex justify-between text-xs text-slate-400"><span>0</span><span>5</span><span>10</span></div>
+            <div id="tinnitus-output" class="font-bold text-cyan-400 mt-1">5</div>
+          </div>
+
+          <div>
+            <div class="font-semibold">3. Stress (1–5)</div>
+            <input id="stress-level" name="stress" type="range" min="1" max="5" value="3" oninput="updateSliderOutput('stress-output',this.value)" class="w-full mt-2">
+            <div class="flex justify-between text-xs text-slate-400"><span>1</span><span>3</span><span>5</span></div>
+            <div id="stress-output" class="font-bold text-cyan-400 mt-1">3</div>
+          </div>
+
+          <div>
+            <div class="font-semibold">4. Sleep</div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2 text-xs">
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="sleep" value="Excellent" required> 😴 Excellent</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="sleep" value="Good"> 🙂 Good</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="sleep" value="Average"> 😐 Average</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="sleep" value="Poor"> 😕 Poor</label>
+              <label class="px-3 py-2 rounded-md bg-slate-900/60 border border-slate-600/60"><input type="radio" name="sleep" value="Very Poor"> 😩 Very Poor</label>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3">
+            <button type="submit" class="btn">Log & Get Summary</button>
+          </div>
+        </form>
+
+        <section id="summary-section" class="mt-3 hidden">
+          <div id="summary-result" class="summary"></div>
+        </section>
+      </div>
+
+      <!-- About -->
+      <div id="about-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-extrabold">About Audiora</h2>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+        <div class="card-panel text-sm text-slate-300 space-y-2">
+          <p>Audiora is a local-first demo app combining relaxation, sound therapy, focus training, and daily logs.</p>
+          <p>All processing is client-side. Audio requires user interaction to start.</p>
+          <p>Perfect for static hosting like GitHub Pages as a PWA.</p>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div id="settings-view" class="view">
+        <div class="flex justify-between items-center mb-3">
+          <h2 class="text-lg font-extrabold">Settings</h2>
+          <button class="muted-btn" onclick="show('home-view')">Back Home</button>
+        </div>
+        <div class="card-panel space-y-4 text-sm text-slate-200">
+          <div>
+            <div class="font-semibold mb-1">Global volume</div>
+            <input id="global-volume" type="range" min="-48" max="0" value="-12" class="w-full">
+          </div>
+          <div>
+            <button onclick="downloadLog()" class="btn">Export Last Log (JSON)</button>
+          </div>
+          <div>
+            <button onclick="logout()" class="muted-btn">Log out</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="px-4 py-2 border-t border-slate-800 text-[11px] text-slate-500">
+      Audiora · demo app · data & login stored only in this browser
+    </div>
+  </div>
+
+  <script>
+    // ----------------- AUTH / LOCALSTORAGE -----------------
+    const USER_KEY = 'AUDIORA_USER';
+    let currentUser = null;
+    const userGreet = document.getElementById('user-greet');
+    const homeBtn   = document.getElementById('home-btn');
+
+    function getSavedUser() {
+      try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); }
+      catch(e){ return null; }
+    }
+    function saveUserToStorage(user) {
+      localStorage.setItem(USER_KEY, JSON.stringify(user));
+    }
+    function setUserContext(user) {
+      currentUser = user;
+      if (user && user.name) {
+        const first = user.name.split(' ')[0] || user.name;
+        userGreet.textContent = 'Hi, ' + first;
+        userGreet.style.display = 'inline-block';
+      } else {
+        userGreet.textContent = '';
+        userGreet.style.display = 'none';
+      }
+    }
+    function logout() {
+      localStorage.removeItem(USER_KEY);
+      currentUser = null;
+      userGreet.textContent = '';
+      userGreet.style.display = 'none';
+      show('login-view');
+    }
+    window.logout = logout;
+
+    // ----------------- SPA NAVIGATION -----------------
+    const views = document.querySelectorAll('.view');
+    function show(id) {
+      views.forEach(v => v.classList.remove('active'));
+      const el = document.getElementById(id);
+      if (el) el.classList.add('active');
+
+      const titles = {
+        'splash-view': 'Welcome',
+        'login-view': 'Sign in',
+        'home-view': 'Relax • Focus • Track',
+        'breath-view': 'Breathing',
+        'positive-view': 'Positive Boost',
+        'sound-view': 'Sound Therapy',
+        'bubble-view': 'Bubble Pop',
+        'log-view': 'Feel Meter',
+        'about-view': 'About',
+        'settings-view': 'Settings'
+      };
+      document.getElementById('top-sub').textContent = titles[id] || 'Audiora';
+
+      if (id === 'home-view' || id === 'splash-view' || id === 'login-view') {
+        homeBtn.style.display = 'none';
+      } else {
+        homeBtn.style.display = 'inline-block';
+      }
+      if (currentUser && id !== 'login-view') {
+        userGreet.style.display = 'inline-block';
+      } else if (!currentUser) {
+        userGreet.style.display = 'none';
+      }
+    }
+    show('splash-view');
+
+    homeBtn.addEventListener('click', ()=> show('home-view'));
+
+    // splash buttons
+    document.getElementById('explore-btn').addEventListener('click', ()=> show('home-view'));
+    document.getElementById('continue-btn').addEventListener('click', ()=>{
+      const u = getSavedUser();
+      if (u) {
+        setUserContext(u);
+        show('home-view');
+      } else {
+        show('login-view');
+      }
+    });
+
+    // PWA install prompt
+    let deferredPrompt = null;
+    const installBtn = document.getElementById('install-btn');
+    window.addEventListener('beforeinstallprompt', (e)=>{
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'inline-flex';
+    });
+    installBtn.addEventListener('click', async ()=>{
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        installBtn.style.display = 'none';
+      }
+      deferredPrompt = null;
+    });
+
+    // login handling
+    const loginForm = document.getElementById('login-form');
+    const loginName = document.getElementById('login-name');
+    const loginEmail= document.getElementById('login-email');
+    const loginPass = document.getElementById('login-pass');
+    const createBtn = document.getElementById('create-account');
+    const skipBtn   = document.getElementById('skip-login-2');
+
+    // Pre-fill from saved user if exists
+    const saved = getSavedUser();
+    if (saved) {
+      loginName.value  = saved.name || '';
+      loginEmail.value = saved.email || '';
+      loginPass.value  = saved.password || '';
+      setUserContext(saved);
+    }
+
+    createBtn.addEventListener('click', ()=>{
+      const name = loginName.value.trim();
+      const email= loginEmail.value.trim();
+      const pass = loginPass.value;
+      if (!name || !email || !pass) { alert('Fill name, email and password'); return; }
+      const user = { name, email, password: pass };
+      saveUserToStorage(user);
+      setUserContext(user);
+      alert('Account saved for this browser.');
+      show('home-view');
+    });
+
+    loginForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const stored = getSavedUser();
+      const email = loginEmail.value.trim();
+      const pass  = loginPass.value;
+      if (!stored) {
+        alert('No account saved yet. Tap "Create / Update Account" first.');
+        return;
+      }
+      if (stored.email === email && stored.password === pass) {
+        setUserContext(stored);
+        show('home-view');
+      } else {
+        alert('Email or password incorrect for saved account.');
+      }
+    });
+
+    skipBtn.addEventListener('click', ()=>{
+      setUserContext(null);
+      show('home-view');
+    });
+
+    // wire home tiles
+    document.querySelectorAll('.tile').forEach(t => t.addEventListener('click', ()=> show(t.dataset.target)));
+
+    document.getElementById('open-settings').addEventListener('click', ()=> show('settings-view'));
+
+    // ----------------- SOUND THERAPY (Tone.js) -----------------
+    window.addEventListener('load', ()=>{
+      const masterVol = new Tone.Volume(-12).toDestination();
+      let active = [];
+
+      function stopAll() {
+        active.forEach(n=>{
+          try{ if (n.stop) n.stop(); } catch(e){}
+          try{ if (n.dispose) n.dispose(); } catch(e){}
+        });
+        active = [];
+        document.querySelectorAll('.sound-play-btn').forEach(b => { b.classList.remove('playing'); b.innerText = '▶'; });
+      }
+
+      function startSound(name){
+        stopAll();
+        let node;
+        switch(name){
+          case 'white-noise':
+            node = new Tone.Noise('white').connect(masterVol); node.start(); active.push(node); break;
+          case 'pink-noise':
+            node = new Tone.Noise('pink').connect(masterVol); node.start(); active.push(node); break;
+          case 'brown-noise':
+            node = new Tone.Noise('brown').connect(masterVol); node.start(); active.push(node); break;
+          case 'ocean':
+            node = new Tone.Noise('brown').connect(new Tone.AutoFilter("0.5Hz")).connect(masterVol); node.start(); active.push(node); break;
+          case 'rain':
+            node = new Tone.Noise('pink').connect(new Tone.AutoFilter("4n")).connect(masterVol); node.start(); active.push(node); break;
+          case 'singing-bowl':
+            node = new Tone.FMOscillator(220, "sine", "sine").set({volume:-12}).connect(masterVol);
+            node.start(); active.push(node); break;
+          case 'thunderstorm':
+            const rumble = new Tone.Noise('brown').connect(masterVol); rumble.start(); active.push(rumble);
+            const crack = new Tone.Loop(time=>{ const s = new Tone.Noise('white').toDestination(); s.volume.value=-28; s.start(time).stop(time+0.06); active.push(s); }, '3s').start(0.5);
+            active.push(crack); break;
+          case 'stream':
+            node = new Tone.Noise('white').connect(new Tone.AutoFilter('16n')).connect(masterVol); node.start(); active.push(node); break;
+          case 'whisper':
+            node = new Tone.Noise('white').connect(new Tone.Filter(2000,'highpass')).connect(masterVol); node.start(); active.push(node); break;
+          case 'bubbles':
+            node = new Tone.Noise('brown').connect(new Tone.AutoFilter('8n').set({filter:{Q:5}})).connect(masterVol); node.start(); active.push(node); break;
+          default:
+            console.log('unknown sound', name);
+        }
+      }
+
+      document.querySelectorAll('.sound-play-btn').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          await Tone.start();
+          const name = btn.dataset.sound;
+          const playing = btn.classList.contains('playing');
+          if (playing) {
+            stopAll();
+          } else {
+            masterVol.volume.value = parseFloat(document.getElementById('sound-volume').value || -12);
+            startSound(name);
+            document.querySelectorAll('.sound-play-btn').forEach(b=>b.classList.remove('playing'));
+            btn.classList.add('playing');
+            btn.innerText='⏸';
+          }
+        });
+      });
+
+      document.getElementById('stop-sound').addEventListener('click', stopAll);
+      document.getElementById('sound-volume').addEventListener('input', e=> masterVol.volume.value = parseFloat(e.target.value || -12));
+      document.getElementById('global-volume').addEventListener('input', e=> masterVol.volume.value = parseFloat(e.target.value || -12));
+    });
+
+    // ----------------- SONIC BREATH -----------------
+    (function(){
+      const startBtn = document.getElementById('breath-start');
+      const stopBtn = document.getElementById('breath-stop');
+      const wave = document.getElementById('sound-wave');
+      const title = document.getElementById('breath-title');
+
+      let ctx, osc, gain, running=false, timerId;
+
+      const INHALE=4000, HOLD=7000, EXHALE=8000, TOTAL=INHALE+HOLD+EXHALE;
+
+      function initAudio(){
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      function startTone(){
+        initAudio();
+        stopTone();
+        osc = ctx.createOscillator();
+        gain = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = 220;
+        gain.gain.value = 0.0005;
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start();
+        gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.5);
+      }
+      function stopTone(){
+        try{ if (osc){ gain.gain.linearRampToValueAtTime(0.0001, ctx.currentTime+0.4); osc.stop(ctx.currentTime+0.5); } } catch(e){}
+      }
+      function setFreq(val, ms){ try{ if (osc) osc.frequency.linearRampToValueAtTime(val, ctx.currentTime + ms/1000); } catch(e){} }
+
+      function runCycle(){
+        if (!running) return;
+        title.textContent='💚 INHALE (4s)'; wave.style.transform='scale(1)'; setFreq(440, INHALE);
+        setTimeout(()=>{ if (!running) return; title.textContent='⏸️ HOLD (7s)'; wave.style.transform='scale(1)'; }, INHALE);
+        setTimeout(()=>{ if (!running) return; title.textContent='💙 EXHALE (8s)'; wave.style.transform='scale(0.6)'; setFreq(110, EXHALE); }, INHALE+HOLD);
+        setTimeout(()=>{ if (!running) return; wave.style.transform='scale(0.6)'; setFreq(220, 800); }, TOTAL);
+        timerId = setTimeout(runCycle, TOTAL);
+      }
+
+      startBtn.addEventListener('click', async ()=>{
+        if (running) return;
+        initAudio(); await ctx.resume();
+        startTone();
+        running = true;
+        startBtn.innerText = 'Running…';
+        startBtn.classList.remove('btn'); startBtn.classList.add('muted-btn');
+        runCycle();
+      });
+      stopBtn.addEventListener('click', ()=>{
+        running = false; clearTimeout(timerId); stopTone();
+        startBtn.innerText = 'Start'; startBtn.classList.remove('muted-btn'); startBtn.classList.add('btn');
+        title.textContent = 'Tap Start to begin'; wave.style.transform='scale(0.6)';
+      });
+    })();
+
+    // ----------------- POSITIVE BOOST -----------------
+    (function(){
+      const pool = [
+        "This too shall pass.",
+        "Breathe. You've got this.",
+        "One small step is still progress.",
+        "You're stronger than you feel right now.",
+        "Tiny actions compound — do one small thing.",
+        "The moment will change, you're okay.",
+        "You don't have to be perfect to be enough.",
+        "Focus on what you can control right now.",
+        "Your breath is an anchor. Use it.",
+        "Even slow progress is progress."
+      ];
+      const box = document.getElementById('affirmation-box');
+      const pauseBtn = document.getElementById('pause-affirm');
+      const nextBtn = document.getElementById('next-affirm');
+      let idx = 0, running=true, intervalId=null;
+
+      function showOne(i){
+        box.style.opacity = 0;
+        setTimeout(()=>{ box.textContent = pool[i % pool.length]; box.style.opacity=1; }, 220);
+      }
+      function startRotate(){
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(()=>{ idx = (idx+1) % pool.length; showOne(idx); }, 4000);
+      }
+      pauseBtn.addEventListener('click', ()=>{
+        if (running){ clearInterval(intervalId); pauseBtn.textContent='Resume'; running=false; } else { startRotate(); pauseBtn.textContent='Pause'; running=true; }
+      });
+      nextBtn.addEventListener('click', ()=>{ idx = (idx+1) % pool.length; showOne(idx); });
+
+      showOne(idx); startRotate();
+    })();
+
+    // ----------------- BUBBLE POP GAME -----------------
+    (function(){
+      const area = document.getElementById('bubble-area');
+      const timerRead = document.getElementById('bubble-timer-read');
+      const bubbleCount = document.getElementById('bubble-count');
+      const bubbleScore = document.getElementById('bubble-score');
+      const startBtn = document.getElementById('start-bubble');
+
+      let duration = 30;
+      let timer = null;
+      let remaining = duration;
+      let bubbles = [];
+      let score = 0;
+      let difficulty = 1;
+
+      function formatTime(s){ const m = Math.floor(s/60); const sec = s % 60; return `${m.toString().padStart(2,'0')}:${sec.toString().padStart(2,'0')}`; }
+
+      function spawnBubble(){
+        const b = document.createElement('div');
+        const size = Math.max(36, 80 - Math.floor(Math.random()*40));
+        b.classList.add('bubble');
+        b.style.width = size + 'px'; b.style.height = size + 'px';
+        const rect = area.getBoundingClientRect();
+        const x = Math.random() * (rect.width - size);
+        const y = Math.random() * (rect.height - size);
+        b.style.left = x + 'px'; b.style.top = y + 'px';
+        b.style.background = `linear-gradient(180deg, hsl(${Math.random()*360} 70% 70%), hsl(${Math.random()*360} 60% 60%))`;
+        area.appendChild(b);
+        bubbles.push(b);
+        bubbleCount.textContent = bubbles.length;
+
+        b.addEventListener('click', ()=>{
+          score += Math.round(100/size) + difficulty*2;
+          bubbleScore.textContent = score;
+          b.remove();
+          bubbles = bubbles.filter(x=>x!==b);
+          bubbleCount.textContent = bubbles.length;
+          const pop = document.createElement('div'); pop.style.position='absolute'; pop.style.left=b.style.left; pop.style.top=b.style.top; pop.style.width=b.style.width; pop.style.height=b.style.height; pop.style.borderRadius='50%'; pop.style.background='rgba(255,255,255,0.12)'; pop.style.pointerEvents='none'; area.appendChild(pop);
+          setTimeout(()=>pop.remove(),240);
+        });
+
+        setTimeout(()=>{
+          if (b.parentNode) { b.remove(); bubbles = bubbles.filter(x=>x!==b); bubbleCount.textContent = bubbles.length; }
+        }, 9000 - difficulty*500);
+      }
+
+      function gameTick(){
+        const spawnRate = Math.max(400, 1200 - difficulty*120);
+        spawnBubble();
+        if (remaining > 0) {
+          timer = setTimeout(gameTick, spawnRate);
+        }
+      }
+
+      function endGame(success){
+        clearTimeout(timer);
+        area.innerHTML = '';
+        bubbles = [];
+        bubbleCount.textContent = '0';
+        alert((success ? 'Nice! You popped them all — score: ' : 'Time up! Score: ') + score);
+      }
+
+      function startGame(){
+        area.innerHTML = ''; bubbles = []; score = 0; bubbleScore.textContent = '0'; bubbleCount.textContent = '0';
+        remaining = duration; timerRead.textContent = formatTime(remaining);
+        difficulty = 1;
+        const countdown = setInterval(()=>{
+          remaining--;
+          if (remaining <= 0) { clearInterval(countdown); endGame(false); }
+          timerRead.textContent = formatTime(remaining);
+          if (remaining % 5 === 0) difficulty++;
+        }, 1000);
+        gameTick();
+        setTimeout(()=>{ clearTimeout(timer); }, duration*1000 + 1000);
+        setTimeout(()=>{ if (bubbles.length === 0) endGame(true); }, duration*1000+1500);
+      }
+
+      startBtn.addEventListener('click', ()=> startGame());
+    })();
+
+    // ----------------- FEEL METER / SUMMARY -----------------
+    (function(){
+      function getRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+      const highTinnitusTips = ["Use pink/brown noise to blend the sound.","Engage in a focus activity to shift attention.","Avoid total silence; use a soft sound cushion.","Gently relax jaw and neck muscles; tension can spike tinnitus."];
+      const habituationTips = ["Label the sound 'tinnitus' then shift focus.","Remind yourself it is annoying, not dangerous.","Notice it, then return to your task — this is brain training."];
+      const highStressTips = ["Try box breathing 4-4-4-4, repeat 5x.","Tense then release all muscles to dump tension.","Write your top 3 worries to 'park' them for later."];
+      const poorSleepTips = ["Set a wind-down alarm 1 hour before bed.","Get 10–15 min of morning light to reset your clock.","Keep the bedroom cool, dark, and use gentle sound if needed."];
+      const maintenanceTips = ["Notice what made today work and reuse it.","Practice 5 min of calm even on good days — builds resilience.","Savor the fact that good days are possible; bank this memory."];
+      const strugglingTips = ["Be extra kind to yourself; tiny wins count.","Focus only on the next 5 minutes, not the whole story.","Use a comforting sound and sip water slowly."];
+      const quotes = ["This too shall pass.","Breathe. You've got this.","One small step is still progress.","Even the darkest night will end and the sun will rise."];
+
+      window.updateSliderOutput = function(id,val){ document.getElementById(id).textContent = val; };
+
+      document.getElementById('tinnitus-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        const data = new FormData(e.target);
+        const mood = data.get('mood');
+        const tinnitus = parseInt(data.get('tinnitus') || 5,10);
+        const stress = parseInt(data.get('stress') || 3,10);
+        const sleep = data.get('sleep');
+
+        let analysis = '';
+        let tips = [];
+
+        if (mood === 'Struggling') {
+          analysis = "You're struggling — go gentle and choose small, kind actions.";
+          tips.push(getRandom(strugglingTips)); tips.push(getRandom(highTinnitusTips));
+        } else if (tinnitus >= 7 && stress >=4 && (sleep === 'Poor' || sleep === 'Very Poor')) {
+          analysis = "Vicious cycle detected (high tinnitus + high stress + poor sleep). Breaking that loop is the priority.";
+          tips.push(getRandom(highStressTips)); tips.push(getRandom(poorSleepTips)); tips.push(getRandom(highTinnitusTips));
+        } else if (tinnitus >= 7) {
+          analysis = "Tinnitus is high — focus on coping strategies and habituation instead of fighting it.";
+          tips.push(getRandom(highTinnitusTips)); tips.push(getRandom(habituationTips));
+        } else if (stress >=4 || sleep === 'Poor' || sleep === 'Very Poor') {
+          analysis = "Stress or sleep is off — these can trigger future spikes, so today is about prevention.";
+          if (stress>=4) tips.push(getRandom(highStressTips));
+          if (sleep==='Poor' || sleep==='Very Poor') tips.push(getRandom(poorSleepTips));
+        } else {
+          analysis = "Pretty balanced log — today is about maintaining and building resilience.";
+          tips.push(getRandom(maintenanceTips)); tips.push(getRandom(maintenanceTips));
+        }
+
+        let html = `<h3 class="font-semibold text-white mb-1">Your Daily Summary</h3>`;
+        html += `<p class="mt-1 text-sm">Tinnitus level: <strong>${tinnitus}/10</strong></p>`;
+        html += `<p class="mt-2 text-sm italic">${analysis}</p>`;
+        html += `<h4 class="mt-3 font-semibold text-sm">Today's Focus</h4><ul class="mt-1 text-sm">`;
+        tips.forEach(t => html += `<li class="mb-1">${t}</li>`);
+        html += `</ul><p class="mt-2 text-xs italic">"${getRandom(quotes)}"</p>`;
+
+        document.getElementById('summary-result').innerHTML = html;
+        document.getElementById('summary-section').classList.remove('hidden');
+        document.getElementById('summary-section').scrollIntoView({behavior:'smooth'});
+      });
+
+      window.downloadLog = function(){
+        const payload = { exportedAt: new Date().toISOString() };
+        const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href=url; a.download='audiora-log.json'; a.click(); URL.revokeObjectURL(url);
+      };
+    })();
+  </script>
+</body>
+</html>
